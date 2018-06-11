@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Thingy</string>
+    <string name="action_settings">Settings</string>
+    <string name="zapper_wifi_pass">12345678</string>
+</resources>
