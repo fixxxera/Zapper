@@ -20,25 +20,39 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        //Disconnect from current network and connect to Sky Zapper hotspot
         connectToDevice();
+
+        //Initialize device with pin and obtain response
         new Request().execute("http://google.bg");
     }
 
     private void connectToDevice() {
         try {
 
-
+            //Create WiFi manager instance
             WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
-            if (wifiManager != null) {
-                WifiConfiguration wifiConfig = new WifiConfiguration();
-                wifiConfig.SSID = String.format("\"%s\"", "SKY_Zapper_8031006C");
-                wifiConfig.preSharedKey = String.format("\"%s\"", getString(R.string.zapper_wifi_pass));
-                int netId = wifiManager.addNetwork(wifiConfig);
-                //Disconnect from current network
-                wifiManager.disconnect();
-                wifiManager.enableNetwork(netId, true);
-                wifiManager.reconnect();
-            }
+
+            //Create new configuration for the device
+            WifiConfiguration wifiConfig = new WifiConfiguration();
+
+            //Set SSID and password for the network
+            wifiConfig.SSID = String.format("\"%s\"", "SKY_Zapper_8031006C");
+            wifiConfig.preSharedKey = String.format("\"%s\"", getString(R.string.zapper_wifi_pass));
+
+            //Add network to stack if the manager is reached
+            assert wifiManager != null;
+            int netId = wifiManager.addNetwork(wifiConfig);
+
+            //Disconnect from current network
+            wifiManager.disconnect();
+
+            //Enable new network
+            wifiManager.enableNetwork(netId, true);
+
+            //Connect to new network
+            wifiManager.reconnect();
 
         } catch (NullPointerException e) {
             e.printStackTrace();
@@ -72,11 +86,21 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected ArrayList<String> doInBackground(String... strings) {
+            //Send a request to the given URL and get the JSON response
+            //TODO
+
+            //Get the response and parse it
+            //TODO
+
+            //Return the needed information back to UI thread
+            //TODO
             return new ArrayList<>();
         }
 
         @Override
         protected void onPostExecute(ArrayList<String> strings) {
+            //Update UI
+            //TODO
             super.onPostExecute(strings);
         }
     }
