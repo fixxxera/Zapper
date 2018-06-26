@@ -1,15 +1,34 @@
 package com.example.fixxxer.thingy;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
+import android.net.ConnectivityManager;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.SocketException;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
@@ -20,12 +39,33 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        WifiManager wifimanager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        //Check if wifi is on and if not, enable it
+        assert wifimanager != null;
+        turnWifiOnIfDisabled(wifimanager);
 
-        //Disconnect from current network and connect to Sky Zapper hotspot
-        connectToDevice();
+        //Check for configured devices
+        new UDP().execute();
+//        try {
+//            new Request().execute(new URL("http://192.168.0.99/GetAdminData"));
+//            Log.e("Request", "Testing");
+//        } catch (MalformedURLException e) {
+//            e.printStackTrace();
+//        }
+    }
 
-        //Initialize device with pin and obtain response
-        new Request().execute("http://google.bg");
+
+    private boolean isConnected() {
+        ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        return (connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).isConnected());
+    }
+
+    private void turnWifiOnIfDisabled(WifiManager wifimanager) {
+
+        if (wifimanager.getWifiState() == WifiManager.WIFI_STATE_DISABLED || wifimanager.getWifiState() == WifiManager.WIFI_STATE_DISABLING) {
+            wifimanager.setWifiEnabled(true);
+        }
     }
 
     private void connectToDevice() {
@@ -82,26 +122,88 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @SuppressLint("StaticFieldLeak")
-    public class Request extends AsyncTask<String, Void, ArrayList<String>> {
+    public class Request extends AsyncTask<URL, Void, ArrayList<String>> {
 
         @Override
-        protected ArrayList<String> doInBackground(String... strings) {
-            //Send a request to the given URL and get the JSON response
-            //TODO
-
-            //Get the response and parse it
-            //TODO
-
-            //Return the needed information back to UI thread
-            //TODO
-            return new ArrayList<>();
+        protected ArrayList<String> doInBackground(URL... strings) {
+            String response = "";
+            JSONObject object = null;
+            try {
+                BufferedReader reader;
+                InputStream is;
+                StringBuilder responseBuilder = new StringBuilder();
+                HttpURLConnection conn = (HttpURLConnection) strings[0].openConnection();
+                conn.setReadTimeout(10000);
+                conn.setConnectTimeout(15000);
+                conn.setRequestMethod("GET");
+                conn.setDoInput(true);
+                conn.connect();
+                is = conn.getInputStream();
+                reader = new BufferedReader(new InputStreamReader(is));
+                for (String line; (line = reader.readLine()) != null; ) {
+                    responseBuilder.append(line).append("\n");
+                }
+                object = new JSONObject(responseBuilder.toString());
+                is.close();
+                reader.close();
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (ProtocolException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            ArrayList<String> keys = new ArrayList<>();
+            try {
+                assert object != null;
+                keys.add(object.getString("NetworksCount"));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            return keys;
         }
 
         @Override
         protected void onPostExecute(ArrayList<String> strings) {
-            //Update UI
+            Log.e("Response", strings.get(0));
             //TODO
             super.onPostExecute(strings);
+        }
+    }
+
+    public class UDP extends AsyncTask<Void, Void, String> {
+
+        @Override
+        protected String doInBackground(Void... voids) {
+            String text = "koko";
+            int server_port = 7432;
+            try {
+                DatagramSocket clientSocket = new DatagramSocket();
+                InetAddress IPAddress = InetAddress.getByName("255.255.255.255");
+                byte[] sendData = ("02904").getBytes();
+                byte[] receiveData = new byte[1024];
+                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, server_port);
+                clientSocket.send(sendPacket);
+                DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+                clientSocket.receive(receivePacket);
+                Log.e("Receiving response", "Response");
+                text = new String(receivePacket.getData());
+                clientSocket.close();
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            } catch (SocketException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return text;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            Log.e("Socket response", s);
         }
     }
 }
